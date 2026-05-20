@@ -1,0 +1,43 @@
+package com.vedansh.taal.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name="habits")
+public class Habit{
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @ManyToOne
+    @JoinColumn(name="user_id")
+    private User user;
+
+    public Habit(){
+
+    }
+
+    public Habit(String name, User user){
+        this.name=name;
+        this.user=user;
+    }
+
+    public Long getId(){
+        return id;
+    }
+    public String getName(){
+        return name;
+    }
+    public User getUser(){
+        return user;
+    }
+    public void setName(String name){
+        this.name=name;
+    }
+    public void setUser(User user){
+        this.user=user;
+    }
+}
