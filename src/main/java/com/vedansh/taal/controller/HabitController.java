@@ -1,4 +1,5 @@
 package com.vedansh.taal.controller;
+import com.vedansh.taal.dto.HabitResponse;
 import com.vedansh.taal.entity.Habit;
 import com.vedansh.taal.service.HabitService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +20,8 @@ public class HabitController {
     }
 
     @GetMapping
-    public List<Habit> getHabit(){
+    public List<HabitResponse> getHabits() {
+
         return habitService.getUserHabits();
     }
 

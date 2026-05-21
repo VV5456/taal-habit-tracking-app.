@@ -19,4 +19,8 @@ public interface HabitEntryRepository extends JpaRepository<HabitEntry, Long>{
     List<HabitEntry> findByHabitOrderByCompletedDateDesc(
             Habit habit
     );
+    boolean existsByHabitAndCompletedDate(
+            Habit habit,
+            LocalDate completedDate
+    );
 }

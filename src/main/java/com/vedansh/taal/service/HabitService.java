@@ -4,16 +4,15 @@ import com.vedansh.taal.entity.Habit;
 import com.vedansh.taal.entity.User;
 import com.vedansh.taal.repository.HabitRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import com.vedansh.taal.entity.HabitEntry;
 import com.vedansh.taal.repository.HabitEntryRepository;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-
+import com.vedansh.taal.dto.HabitResponse;
 import java.time.LocalDate;
+
 
 @Service
 public class HabitService {
@@ -30,11 +29,6 @@ public class HabitService {
 
         return habitRepository.save(habit);
 
-    }
-    public List<Habit> getUserHabits(){
-        User currentUser=authService.getCurrentUser();
-
-        return habitRepository.findByUser(currentUser);
     }
     @Autowired
     private HabitEntryRepository habitEntryRepository;
@@ -116,6 +110,17 @@ public class HabitService {
             currentDate=currentDate.minusDays(1);
         }
         return streak;
+    }
+
+    public List<HabitResponse> getUserHabits(){
+        User currentUser=authService.getCurrentUser();
+
+        List<Habit> habits= habitRepository.findByUser(currentUser);
+
+        return habits.stream().map(habit-> {
+            boolean completedToday=habitEntryRepository.existsByHabitAndCompletedDate(habit,LocalDate.now());
+            return new HabitResponse(habit.getId(), habit.getName(), completedToday);
+        }).toList();
     }
 }
 
