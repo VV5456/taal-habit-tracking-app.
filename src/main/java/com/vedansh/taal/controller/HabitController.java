@@ -32,6 +32,10 @@ public class HabitController {
     public List<HabitEntry> getHabitEntries(@PathVariable Long habitId){
         return habitService.getHabitEntries(habitId);
     }
+    @GetMapping("/{habitId}/streak")
+    public int getHabitStreak(@PathVariable Long habitId){
+        return habitService.getHabitStreak(habitId);
+    }
 
 
 

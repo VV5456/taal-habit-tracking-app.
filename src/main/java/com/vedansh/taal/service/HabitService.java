@@ -4,11 +4,14 @@ import com.vedansh.taal.entity.Habit;
 import com.vedansh.taal.entity.User;
 import com.vedansh.taal.repository.HabitRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import com.vedansh.taal.entity.HabitEntry;
 import com.vedansh.taal.repository.HabitEntryRepository;
-import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 
 import java.time.LocalDate;
 
@@ -82,6 +85,37 @@ public class HabitService {
 
         return habitEntryRepository
                 .findByHabitOrderByCompletedDateDesc(habit);
+    }
+
+    public int getHabitStreak(Long habitId){
+        User currentUser= authService.getCurrentUser();
+
+        Habit habit=habitRepository.findById(habitId)
+                .orElseThrow(()-> new RuntimeException("Habit not found"));
+
+        if(!habit.getUser().getId().equals(currentUser.getId())){
+            throw new RuntimeException("Unauthorized");
+        }
+
+        List<HabitEntry>entries=habitEntryRepository.findByHabitOrderByCompletedDateDesc(habit);
+
+        Set<LocalDate> completedDates=entries.stream().map(HabitEntry::getCompletedDate).collect(Collectors.toSet());
+
+        LocalDate currentDate= LocalDate.now();
+
+        if (!completedDates.contains(currentDate)) {
+
+            currentDate=currentDate.minusDays(1);
+        }
+
+        int streak=0;
+
+        while(completedDates.contains(currentDate)){
+            streak++;
+
+            currentDate=currentDate.minusDays(1);
+        }
+        return streak;
     }
 }
 
