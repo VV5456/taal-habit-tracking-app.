@@ -4,6 +4,7 @@ import com.vedansh.taal.entity.Habit;
 import com.vedansh.taal.entity.User;
 import com.vedansh.taal.repository.HabitRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import com.vedansh.taal.entity.HabitEntry;
@@ -52,7 +53,18 @@ public class HabitService {
                         .isPresent();
 
         if (alreadyCompleted) {
-            return "Habit already completed today";
+
+            HabitEntry existingEntry =
+                    habitEntryRepository
+                            .findByHabitAndCompletedDate(
+                                    habit,
+                                    today
+                            )
+                            .orElseThrow();
+
+            habitEntryRepository.delete(existingEntry);
+
+            return "Habit uncompleted";
         }
 
         HabitEntry entry = new HabitEntry();
@@ -112,6 +124,19 @@ public class HabitService {
         return streak;
     }
 
+    public void deleteHabit(Long habitId){
+        User currentUser=authService.getCurrentUser();
+
+        Habit habit=habitRepository.findById(habitId).orElseThrow(()-> new RuntimeException("Habit not found."));
+
+        if(!habit.getUser().getId().equals(currentUser.getId())){
+            throw new RuntimeException("Unauthorized");
+        }
+
+        habitRepository.delete(habit);
+    }
+
+
     public List<HabitResponse> getUserHabits(){
         User currentUser=authService.getCurrentUser();
 
@@ -119,7 +144,12 @@ public class HabitService {
 
         return habits.stream().map(habit-> {
             boolean completedToday=habitEntryRepository.existsByHabitAndCompletedDate(habit,LocalDate.now());
-            return new HabitResponse(habit.getId(), habit.getName(), completedToday);
+            List<LocalDate> completedDates=habitEntryRepository
+                    .findByHabitOrderByCompletedDateDesc(habit)
+                    .stream()
+                    .map(HabitEntry::getCompletedDate)
+                    .toList();
+            return new HabitResponse(habit.getId(), habit.getName(), completedToday, getHabitStreak(habit.getId()),completedDates);
         }).toList();
     }
 }

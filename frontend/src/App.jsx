@@ -6,6 +6,7 @@ function App() {
   const [password, setPassword] = useState('')
   const [habits, setHabits] = useState([])
   const [newHabit, setNewHabit] = useState('')
+  const [habitToDelete, setHabitToDelete] = useState(null)
 
 
   const [isLoggedIn, setIsLoggedIn] = useState(
@@ -129,6 +130,32 @@ function App() {
     }
   }
 
+  const deleteHabit = async (habitId) => {
+
+    try {
+
+      const token = localStorage.getItem('token')
+
+      await fetch(
+        `http://localhost:8080/api/habits/${habitId}`,
+        {
+          method: 'DELETE',
+
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      fetchHabits()
+
+    } catch (error) {
+
+      console.error(error)
+    }
+  }
+
+
   useEffect(() => {
 
     fetchHabits()
@@ -229,19 +256,123 @@ function App() {
 
               <div
                 key={habit.id}
-                className="bg-zinc-900 p-4 rounded-xl flex items-center justify-between"
+                className="bg-zinc-900 p-5 rounded-2xl"
               >
 
-                <span className="font-medium">
-                  {habit.name}
-                </span>
+                <div className="flex items-center justify-between mb-5">
 
-                <button
-                  onClick={() => completeHabit(habit.id)}
-                  className="bg-green-500 px-4 py-2 rounded-lg text-sm font-semibold"
-                >
-                  Complete
-                </button>
+                  <h2 className="font-semibold text-xl">
+                    {habit.name}
+                  </h2>
+
+                  <div className="flex items-center gap-2">
+
+                    {habit.completedToday ? (
+
+                      <button
+                        onClick={() => completeHabit(habit.id)}
+                        className="border-2 border-green-500 bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-80 transition"
+                      >
+                        ✓
+                      </button>
+
+                    ) : (
+
+                      <button
+                        onClick={() => completeHabit(habit.id)}
+                        className="border-2 border-zinc-800 text-zinc-300 px-4 py-2 rounded-xl text-sm font-semibold hover:border-green-400 hover:text-green-400 transition"
+                      >
+                        ✓
+                      </button>
+
+                    )}
+
+                    <button
+                      onClick={() => setHabitToDelete(habit)}
+                      className="w-10 h-10 flex items-center justify-center rounded-xl border-2 border-zinc-800 text-zinc-500 hover:border-red-500 hover:text-red-500 transition"
+                    >
+                      ×
+                    </button>
+
+                    {habitToDelete && (
+
+                      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+
+                        <div className="bg-zinc-900 p-6 rounded-2xl w-full max-w-sm mx-4">
+
+                          <h2 className="text-2xl font-bold mb-3">
+                            Delete Habit?
+                          </h2>
+
+                          <p className="text-zinc-400 mb-6">
+                            This will permanently remove all streak history and completion data.
+                          </p>
+
+                          <div className="flex justify-end gap-3">
+
+                            <button
+                              onClick={() => setHabitToDelete(null)}
+                              className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300"
+                            >
+                              Cancel
+                            </button>
+
+                            <button
+                              onClick={async () => {
+
+                                await deleteHabit(habitToDelete.id)
+
+                                setHabitToDelete(null)
+
+                              }}
+                              className="px-4 py-2 rounded-xl bg-red-500 text-white"
+                            >
+                              Delete
+                            </button>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                    )}
+
+                  </div>
+
+                </div>
+
+                <div className="grid grid-rows-7 grid-flow-col auto-cols-max gap-y-[3px] gap-x-[3px] overflow-x-auto">
+
+                  {[...Array(175)].map((_, index) => {
+
+                    const date = new Date()
+
+                    date.setDate(date.getDate() - (174 - index))
+
+                    const formattedDate =
+                      date.toISOString().split('T')[0]
+
+                    const completed =
+                      habit.completedDates.includes(formattedDate)
+
+                    return (
+
+                      <div
+                        key={index}
+                        className={`w-3 h-3 rounded-sm ${completed
+                          ? 'bg-green-400'
+                          : 'bg-[#112418]'
+                          }`}
+                      />
+
+                    )
+
+                  })}
+
+                </div>
+
+
 
               </div>
 

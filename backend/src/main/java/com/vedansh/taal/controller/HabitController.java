@@ -39,6 +39,10 @@ public class HabitController {
         return habitService.getHabitStreak(habitId);
     }
 
+    @DeleteMapping("/{habitId}")
+    public void deleteHabit(
+            @PathVariable Long habitId){habitService.deleteHabit(habitId);
+    }
 
 
 }
