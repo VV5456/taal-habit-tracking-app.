@@ -17,12 +17,15 @@ public class HabitResponse {
 
     private List<LocalDate> completedDates;
 
-    public HabitResponse( Long id, String name, boolean completedToday, int streak, List<LocalDate> completedDates){
+    private String icon;
+
+    public HabitResponse( Long id, String name,String icon, boolean completedToday, int streak, List<LocalDate> completedDates){
         this.id=id;
         this.name=name;
         this.completedToday=completedToday;
         this.streak=streak;
         this.completedDates=completedDates;
+        this.icon=icon;
 
     }
 
@@ -41,4 +44,6 @@ public class HabitResponse {
     public List<LocalDate> getCompletedDates() {
         return completedDates;
     }
+    public String getIcon(){return icon;}
+
 }

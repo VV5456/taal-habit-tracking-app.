@@ -136,6 +136,19 @@ public class HabitService {
         habitRepository.delete(habit);
     }
 
+    public Habit updateHabit(Long habitId, Habit updatedHabit){
+        User currentUser=authService.getCurrentUser();
+
+        Habit existingHabit= habitRepository.findById(habitId).orElseThrow(()-> new RuntimeException(("Habit not found")));
+
+        if(!existingHabit.getUser().getId().equals(currentUser.getId())){
+            throw new RuntimeException("Unauthorized");
+        }
+        existingHabit.setName(updatedHabit.getName());
+
+        return habitRepository.save(existingHabit);
+    }
+
 
     public List<HabitResponse> getUserHabits(){
         User currentUser=authService.getCurrentUser();
@@ -149,7 +162,7 @@ public class HabitService {
                     .stream()
                     .map(HabitEntry::getCompletedDate)
                     .toList();
-            return new HabitResponse(habit.getId(), habit.getName(), completedToday, getHabitStreak(habit.getId()),completedDates);
+            return new HabitResponse(habit.getId(), habit.getName(),habit.getIcon(), completedToday, getHabitStreak(habit.getId()),completedDates);
         }).toList();
     }
 }

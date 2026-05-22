@@ -44,5 +44,10 @@ public class HabitController {
             @PathVariable Long habitId){habitService.deleteHabit(habitId);
     }
 
+    @PutMapping("/{habitId}")
+    public Habit updateHabit(@PathVariable Long habitId, @RequestBody Habit updatedHabit){
+        return habitService.updateHabit(habitId, updatedHabit);
+    }
+
 
 }
