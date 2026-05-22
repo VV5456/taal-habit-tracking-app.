@@ -7,6 +7,26 @@ function App() {
   const [habits, setHabits] = useState([])
   const [newHabit, setNewHabit] = useState('')
   const [habitToDelete, setHabitToDelete] = useState(null)
+  const [editingHabitId, setEditingHabitId] = useState(null)
+  const [editedHabitName, setEditedHabitName] = useState('')
+  const [openMenuHabitId, setOpenMenuHabitId] = useState(null)
+  const [showAddHabitModal, setShowAddHabitModal] = useState(false)
+
+  const [selectedIcon, setSelectedIcon] = useState("📚")
+  const icons = [
+    "📚",
+    "💪",
+    "🏃",
+    "💧",
+    "🧘",
+    "🎸",
+    "🛌",
+    "🧠",
+    "📖",
+    "🚀",
+    "🎯",
+    "🔥"
+  ]
 
 
   const [isLoggedIn, setIsLoggedIn] = useState(
@@ -92,6 +112,7 @@ function App() {
 
           body: JSON.stringify({
             name: newHabit,
+            icon: selectedIcon,
           }),
         }
       )
@@ -130,6 +151,7 @@ function App() {
     }
   }
 
+
   const deleteHabit = async (habitId) => {
 
     try {
@@ -148,6 +170,48 @@ function App() {
       )
 
       fetchHabits()
+
+    } catch (error) {
+
+      console.error(error)
+    }
+  }
+
+  const updateHabit = async (habitId) => {
+
+    try {
+
+      const token = localStorage.getItem('token')
+
+      await fetch(
+        `http://localhost:8080/api/habits/${habitId}`,
+        {
+          method: 'PUT',
+
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+
+          body: JSON.stringify({
+            name: editedHabitName,
+          }),
+        }
+      )
+
+
+
+      setHabits((prevHabits) =>
+        prevHabits.map((habit) =>
+          habit.id === habitId
+            ? { ...habit, name: editedHabitName }
+            : habit
+        )
+      )
+
+      setEditingHabitId(null)
+
+      setEditedHabitName('')
 
     } catch (error) {
 
@@ -210,9 +274,20 @@ function App() {
 
         <div className="w-full max-w-md p-4">
 
-          <h1 className="text-3xl font-bold mb-6">
-            Habits
-          </h1>
+          <div className="flex items-center justify-between mb-8">
+
+            <h1 className="text-3xl font-bold">
+              Habits
+            </h1>
+
+            <button
+              onClick={() => setShowAddHabitModal(true)}
+              className="border-2 bg-zinc-800 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:scale-105 opacity-80 transition "
+            >
+              +
+            </button>
+
+          </div>
 
           <button
             onClick={() => {
@@ -229,24 +304,7 @@ function App() {
             Logout
           </button>
 
-          <div className="flex gap-2 mb-6">
 
-            <input
-              type="text"
-              placeholder="New Habit"
-              value={newHabit}
-              onChange={(e) => setNewHabit(e.target.value)}
-              className="flex-1 bg-zinc-800 p-3 rounded-lg outline-none"
-            />
-
-            <button
-              onClick={addHabit}
-              className="bg-white text-black px-4 rounded-lg font-semibold"
-            >
-              Add
-            </button>
-
-          </div>
 
 
           <div className="flex flex-col gap-3">
@@ -261,11 +319,52 @@ function App() {
 
                 <div className="flex items-center justify-between mb-5">
 
-                  <h2 className="font-semibold text-xl">
-                    {habit.name}
-                  </h2>
+                  {editingHabitId === habit.id ? (
 
-                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={editedHabitName}
+                      onChange={(e) => setEditedHabitName(e.target.value)}
+                      onBlur={() => updateHabit(habit.id)}
+                      onKeyDown={(e) => {
+
+                        if (e.key === 'Enter') {
+                          updateHabit(habit.id)
+                        }
+
+                      }}
+                      className="bg-transparent outline-none text-xl font-semibold"
+                      autoFocus
+                    />
+
+                  ) : (
+
+                    <div className="flex items-center gap-2">
+
+                      <div className="text-1xl">
+                        {habit.icon || "📚"}
+                      </div>
+
+                      <h2
+                        onDoubleClick={() => {
+
+                          setEditingHabitId(habit.id)
+
+                          setEditedHabitName(habit.name)
+
+                        }}
+                        className="font-semibold text-xl cursor-pointer"
+                      >
+                        {habit.name}
+                      </h2>
+
+                    </div>
+
+                  )}
+
+
+
+                  <div className="flex items-center gap-2 relative">
 
                     {habit.completedToday ? (
 
@@ -280,7 +379,7 @@ function App() {
 
                       <button
                         onClick={() => completeHabit(habit.id)}
-                        className="border-2 border-zinc-800 text-zinc-300 px-4 py-2 rounded-xl text-sm font-semibold hover:border-green-400 hover:text-green-400 transition"
+                        className="border-2 border-zinc-600 text-zinc-300 px-4 py-2 rounded-xl text-sm font-semibold hover:border-green-400 hover:text-green-400 transition"
                       >
                         ✓
                       </button>
@@ -288,53 +387,55 @@ function App() {
                     )}
 
                     <button
-                      onClick={() => setHabitToDelete(habit)}
-                      className="w-10 h-10 flex items-center justify-center rounded-xl border-2 border-zinc-800 text-zinc-500 hover:border-red-500 hover:text-red-500 transition"
+                      onClick={() => {
+
+                        setOpenMenuHabitId(
+                          openMenuHabitId === habit.id
+                            ? null
+                            : habit.id
+                        )
+
+                      }}
+                      className="w-10 h-10 flex items-center justify-center rounded-xl bg-zinc-800 text-zinc-400 hover:bg-zinc-700 transition"
                     >
-                      ×
+                      ⋯
                     </button>
 
-                    {habitToDelete && (
+                    {openMenuHabitId === habit.id && (
 
-                      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                      <div className="absolute top-12 right-0 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl z-50 min-w-[140px]">
 
-                        <div className="bg-zinc-900 p-6 rounded-2xl w-full max-w-sm mx-4">
+                        <button
+                          onClick={() => {
 
-                          <h2 className="text-2xl font-bold mb-3">
-                            Delete Habit?
-                          </h2>
+                            setEditingHabitId(habit.id)
 
-                          <p className="text-zinc-400 mb-6">
-                            This will permanently remove all streak history and completion data.
-                          </p>
+                            setEditedHabitName(habit.name)
 
-                          <div className="flex justify-end gap-3">
+                            setOpenMenuHabitId(null)
 
-                            <button
-                              onClick={() => setHabitToDelete(null)}
-                              className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300"
-                            >
-                              Cancel
-                            </button>
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-zinc-800 transition"
+                        >
+                          Edit
+                        </button>
 
-                            <button
-                              onClick={async () => {
+                        <button
+                          onClick={() => {
+                            console.log("delete clicked")
 
-                                await deleteHabit(habitToDelete.id)
+                            setHabitToDelete(habit)
 
-                                setHabitToDelete(null)
+                            setOpenMenuHabitId(null)
 
-                              }}
-                              className="px-4 py-2 rounded-xl bg-red-500 text-white"
-                            >
-                              Delete
-                            </button>
-
-                          </div>
-
-                        </div>
+                          }}
+                          className="w-full text-left px-4 py-3 text-red-400 hover:bg-zinc-800 transition"
+                        >
+                          Delete
+                        </button>
 
                       </div>
+
 
                     )}
 
@@ -374,17 +475,129 @@ function App() {
 
 
 
+
               </div>
-
-
 
 
 
             ))}
 
           </div>
+          {showAddHabitModal && (
+
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+
+              <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 w-full max-w-md mx-4">
+
+                <div className="flex items-center justify-between mb-6">
+
+                  <h2 className="text-2xl font-bold">
+                    New Habit
+                  </h2>
+
+                  <button
+                    onClick={() => setShowAddHabitModal(false)}
+                    className="text-zinc-500 hover:text-white transition"
+                  >
+                    ✕
+                  </button>
+
+                </div>
+
+                <input
+                  type="text"
+                  placeholder="Habit name"
+                  value={newHabit}
+                  onChange={(e) => setNewHabit(e.target.value)}
+                  className="w-full bg-zinc-800 p-4 rounded-2xl outline-none mb-6 text-lg"
+                />
+
+                <div className="grid grid-cols-4 gap-3 mb-6">
+
+                  {icons.map((icon) => (
+
+                    <button
+                      key={icon}
+                      onClick={() => setSelectedIcon(icon)}
+                      className={`h-16 rounded-2xl text-3xl flex items-center justify-center transition ${selectedIcon === icon
+                        ? 'bg-white text-black scale-105'
+                        : 'bg-zinc-800 hover:bg-zinc-700'
+                        }`}
+                    >
+                      {icon}
+                    </button>
+
+                  ))}
+
+                </div>
+
+                <button
+                  onClick={async () => {
+
+                    await addHabit()
+
+                    setShowAddHabitModal(false)
+
+                    setSelectedIcon("📚")
+
+                  }}
+                  className="w-full bg-white text-black py-4 rounded-2xl font-semibold text-lg hover:scale-[1.02] transition"
+                >
+                  Create Habit
+                </button>
+
+              </div>
+
+            </div>
+
+          )}
+
+          {habitToDelete && (
+
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+
+              <div className="bg-zinc-900 p-6 rounded-2xl w-full max-w-sm mx-4 border border-zinc-800">
+
+                <h2 className="text-2xl font-bold mb-3">
+                  Delete Habit?
+                </h2>
+
+                <p className="text-zinc-400 mb-6">
+                  This will permanently remove all streak history and completion data.
+                </p>
+
+                <div className="flex justify-end gap-3">
+
+                  <button
+                    onClick={() => setHabitToDelete(null)}
+                    className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    onClick={async () => {
+
+                      await deleteHabit(habitToDelete.id)
+
+                      setHabitToDelete(null)
+
+                    }}
+                    className="px-4 py-2 rounded-xl bg-red-500 text-white hover:opacity-90 transition"
+                  >
+                    Delete
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          )}
 
         </div>
+
 
       )}
 
