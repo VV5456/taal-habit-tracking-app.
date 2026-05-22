@@ -28,6 +28,7 @@ const C = {
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', sym: '⊞' },
   { id: 'habits', label: 'Habits', sym: '◎' },
+  { id: 'insights', label: 'Insights', sym: '⌕' },
   { id: 'calendar', label: 'Calendar', sym: '▦' },
   { id: 'settings', label: 'Settings', sym: '⚙' },
 ]
@@ -89,7 +90,8 @@ export default function App() {
   const [selectedIcon, setSelectedIcon] = useState('📚')
   const [activeNav, setActiveNav] = useState('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'))
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [activityMode, setActivityMode] = useState('allTime')
 
   // ── API calls ───────────────────────────────────────────────────────────────
   const fetchHabits = useCallback(async () => {
@@ -101,6 +103,53 @@ export default function App() {
       setHabits(await res.json())
     } catch (e) { console.error(e) }
   }, [])
+
+  const validateToken = async () => {
+
+    const token = localStorage.getItem('token')
+
+    if (!token) {
+
+      setIsLoggedIn(false)
+
+      return
+    }
+
+    try {
+
+      const res = await fetch(
+        'http://localhost:8080/api/auth/validate',
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (!res.ok) {
+
+        localStorage.removeItem('token')
+
+        setIsLoggedIn(false)
+
+        return
+      }
+
+      setIsLoggedIn(true)
+
+      fetchHabits()
+
+    } catch (e) {
+
+      console.error(e)
+
+      localStorage.removeItem('token')
+
+      setIsLoggedIn(false)
+
+    }
+  }
+
 
   const handleLogin = async () => {
 
@@ -242,7 +291,11 @@ export default function App() {
     } catch (e) { console.error(e) }
   }
 
-  useEffect(() => { fetchHabits() }, [fetchHabits])
+  useEffect(() => {
+
+    validateToken()
+
+  }, [])
 
   // ── Derived stats ───────────────────────────────────────────────────────────
   const completedToday = habits.filter(h => h.completedToday).length
@@ -259,6 +312,153 @@ export default function App() {
     }
     return acc + s
   }, 0)
+  const allDates = habits.flatMap(
+    habit => habit.completedDates || []
+  )
+
+  const earliestDate = allDates.length
+    ? new Date(
+      Math.min(
+        ...allDates.map(date => new Date(date))
+      )
+    )
+    : null
+
+  const activeSince = earliestDate
+    ? Math.floor(
+      (new Date() - earliestDate) /
+      (1000 * 60 * 60 * 24)
+    )
+    : 0
+
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+  const weeklyData = weekDays.map((day, dayIndex) => {
+
+    const count = habits.reduce((total, habit) => {
+
+      const completedThisDay = habit.completedDates.filter((dateStr) => {
+
+        const date = new Date(dateStr)
+
+        // ALL TIME MODE
+
+        if (activityMode === 'allTime') {
+          return date.getDay() === dayIndex
+        }
+
+        // THIS WEEK MODE
+
+        const today = new Date()
+
+        const startOfWeek = new Date(today)
+
+        startOfWeek.setDate(
+          today.getDate() - today.getDay()
+        )
+
+        const endOfWeek = new Date(startOfWeek)
+
+        endOfWeek.setDate(startOfWeek.getDate() + 6)
+
+        return (
+          date.getDay() === dayIndex &&
+          date >= startOfWeek &&
+          date <= endOfWeek
+        )
+
+      }).length
+
+      return total + completedThisDay
+
+    }, 0)
+
+    return {
+      day,
+      value: count,
+    }
+
+  })
+
+  const calendarData = [...Array(140)].map((_, index) => {
+
+    const date = new Date()
+
+    date.setDate(date.getDate() - (139 - index))
+
+    const formattedDate =
+      date.toISOString().split('T')[0]
+
+    const completions = habits.reduce((count, habit) => {
+
+      return count + (
+        habit.completedDates.includes(formattedDate)
+          ? 1
+          : 0
+      )
+
+    }, 0)
+
+    return {
+      date: formattedDate,
+      count: completions,
+    }
+
+  })
+
+  const today = new Date()
+
+  const startOfWeek = new Date(today)
+
+  startOfWeek.setDate(
+    today.getDate() - today.getDay()
+  )
+
+  const weeklyCompletions = habits.reduce((total, habit) => {
+
+    const count = habit.completedDates.filter((dateStr) => {
+
+      const date = new Date(dateStr)
+
+      return date >= startOfWeek
+
+    }).length
+
+    return total + count
+
+  }, 0)
+
+  const activeDaysThisWeek = new Set(
+
+    habits.flatMap(habit =>
+
+      habit.completedDates.filter((dateStr) => {
+
+        const date = new Date(dateStr)
+
+        return date >= startOfWeek
+
+      })
+
+    )
+
+  ).size
+
+
+
+
+
+  const bestHabit = habits.reduce((best, current) => {
+
+    const bestCount = best?.completedDates?.length || 0
+    const currentCount = current?.completedDates?.length || 0
+
+    return currentCount > bestCount
+      ? current
+      : best
+
+  }, null)
+
 
   // ── Login page ──────────────────────────────────────────────────────────────
   if (!isLoggedIn) {
@@ -487,6 +687,94 @@ export default function App() {
   // ── Body content (shared between desktop/mobile) ─────────────────────────────
   const BodyContent = (
     <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '22px 28px' }}>
+      <div style={{
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderRadius: 18,
+        padding: isMobile ? '20px' : '24px',
+        marginBottom: 24,
+      }}>
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+        }}>
+
+          <div>
+
+            <p style={{
+              margin: '0 0 6px',
+              color: C.textMid,
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: 1.2,
+            }}>
+              Today's Progress
+            </p>
+
+            <h2 style={{
+              margin: 0,
+              color: C.text,
+              fontSize: isMobile ? 24 : 30,
+              fontWeight: 700,
+            }}>
+              {completedToday} / {habits.length}
+            </h2>
+
+          </div>
+
+          <div style={{
+            width: 64,
+            height: 64,
+            borderRadius: '50%',
+            border: `4px solid ${C.accentDim}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: C.accent,
+            fontWeight: 700,
+            fontSize: 18,
+            background: C.accentBg,
+          }}>
+            {pct}%
+          </div>
+
+        </div>
+
+        {/* Progress bar */}
+
+        <div style={{
+          width: '100%',
+          height: 10,
+          background: C.surfaceAlt,
+          borderRadius: 999,
+          overflow: 'hidden',
+          marginBottom: 10,
+        }}>
+
+          <div style={{
+            width: `${pct}%`,
+            height: '100%',
+            background: C.accent,
+            borderRadius: 999,
+            transition: 'width 0.3s ease',
+          }} />
+
+        </div>
+
+        <p style={{
+          margin: 0,
+          color: C.textMid,
+          fontSize: 13,
+        }}>
+          {pct === 100
+            ? 'Perfect day. Every habit completed.'
+            : 'Keep going. Build consistency daily.'}
+        </p>
+
+      </div>
       {/* Stats */}
       <div style={{
         display: 'grid',
@@ -496,8 +784,10 @@ export default function App() {
         <StatCard label="Total Habits" value={habits.length} sub={`${completedToday} done today`} tint={C.accentDim} />
         <StatCard label="Done Today" value={`${completedToday}/${habits.length}`} sub={`${pct}% completion`} tint={C.blueDim} />
         <StatCard label="Streak Points" value={totalStreak} sub="consecutive days" tint={C.accentDim} />
-        <StatCard label="Active Since" value="175d" sub="tracking window" tint={C.blueDim} />
+        <StatCard label="Active Since" value={`${activeSince}d`} sub="tracking window" tint={C.blueDim} />
       </div>
+
+
 
       {/* Section header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -524,10 +814,240 @@ export default function App() {
           borderRadius: 14,
           padding: 24,
         }}>
-          <h2 style={{ marginTop: 0 }}>All Habits</h2>
-          <p style={{ color: C.textMid }}>
-            Habit management view coming soon.
-          </p>
+          <div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile
+                ? 'repeat(2, 1fr)'
+                : 'repeat(auto-fill, minmax(180px, 1fr))',
+
+              gap: 18,
+            }}>
+
+              {habits.map((habit) => (
+
+                <div
+                  key={habit.id}
+                  style={{
+                    background: C.surface,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 18,
+                    padding: 18,
+                    cursor: 'pointer',
+                    transition: '0.2s ease',
+                  }}
+                >
+
+
+
+                  <h3 style={{
+                    margin: '0 0 8px',
+                    color: C.text,
+                    fontSize: 18,
+                    fontWeight: 700,
+                  }}>
+                    {habit.name}
+                  </h3>
+
+                  <p style={{
+                    margin: 0,
+                    color: C.textMid,
+                    fontSize: 13,
+                  }}>
+                    {habit.completedDates?.length || 0} completions
+                  </p>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          </div>
+        </div>
+
+      )}
+
+      {activeNav === 'insights' && (
+
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 18,
+        }}>
+
+          {/* Top stats */}
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile
+              ? '1fr'
+              : 'repeat(3, 1fr)',
+            gap: 14,
+          }}>
+
+            {[
+              {
+                label: 'Completion Rate',
+                value: `${pct}%`,
+              },
+              {
+                label: 'Total Habits',
+                value: habits.length,
+              },
+              {
+                label: 'Completed Today',
+                value: completedToday,
+              },
+            ].map((item) => (
+
+              <div
+                key={item.label}
+                style={{
+                  background: C.surface,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 18,
+                  padding: 18,
+                }}
+              >
+
+                <p style={{
+                  margin: '0 0 8px',
+                  color: C.textMid,
+                  fontSize: 11,
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                }}>
+                  {item.label}
+                </p>
+
+                <h2 style={{
+                  margin: 0,
+                  color: C.text,
+                  fontSize: 24,
+                  fontWeight: 700,
+                }}>
+                  {item.value}
+                </h2>
+
+              </div>
+
+            ))}
+
+          </div>
+
+          {/* Weekly graph */}
+
+          <div style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 18,
+            padding: 20,
+          }}>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 22,
+            }}>
+
+              <div>
+
+                <p style={{
+                  margin: '0 0 6px',
+                  color: C.textMid,
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                }}>
+                  Weekly Activity
+                </p>
+
+                <h3 style={{
+                  margin: 0,
+                  color: C.text,
+                  fontSize: 18,
+                  fontWeight: 700,
+                }}>
+                  Consistency Trend
+                </h3>
+
+              </div>
+
+              <select
+                value={activityMode}
+                onChange={(e) => setActivityMode(e.target.value)}
+                style={{
+                  background: C.surfaceAlt,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 10,
+                  padding: '8px 12px',
+                  color: C.text,
+                  fontSize: 12,
+                  outline: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+
+                <option value="allTime">
+                  All Time
+                </option>
+
+                <option value="thisWeek">
+                  This Week
+                </option>
+
+              </select>
+
+            </div>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'space-between',
+              gap: 8,
+              height: 180,
+            }}>
+
+              {weeklyData.map((item) => (
+
+                <div
+                  key={item.day}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    flex: 1,
+                    gap: 10,
+                  }}
+                >
+
+                  <div style={{
+                    width: '70%',
+                    borderRadius: 2,
+                    background: C.accentBg,
+                    border: `1px solid ${C.accentDim}`,
+                    height: `${40 + item.value * 18}px`,
+                    transition: '0.2s ease',
+                  }} />
+
+                  <span style={{
+                    color: C.textMid,
+                    fontSize: 11,
+                  }}>
+                    {item.day}
+                  </span>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          </div>
+
         </div>
 
       )}
@@ -535,15 +1055,234 @@ export default function App() {
       {activeNav === 'calendar' && (
 
         <div style={{
-          background: C.surface,
-          border: `1px solid ${C.border}`,
-          borderRadius: 14,
-          padding: 24,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 18,
         }}>
-          <h2 style={{ marginTop: 0 }}>Calendar</h2>
-          <p style={{ color: C.textMid }}>
-            Calendar analytics view coming soon.
-          </p>
+
+          <div style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 18,
+            padding: isMobile ? 18 : 24,
+          }}>
+
+            {/* Header */}
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 22,
+            }}>
+
+              <div>
+
+                <p style={{
+                  margin: '0 0 6px',
+                  color: C.textMid,
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                }}>
+                  Contribution Activity
+                </p>
+
+                <h3 style={{
+                  margin: 0,
+                  color: C.text,
+                  fontSize: 18,
+                  fontWeight: 700,
+                }}>
+                  Consistency Timeline
+                </h3>
+
+              </div>
+
+              <p style={{
+                margin: 0,
+                color: C.textMid,
+                fontSize: 12,
+              }}>
+                Last 140 days
+              </p>
+
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile
+                ? '1fr'
+                : 'repeat(2, 1fr)',
+              gap: 14,
+              marginBottom: 24,
+            }}>
+
+              <div style={{
+                background: C.surfaceAlt,
+                border: `1px solid ${C.border}`,
+                borderRadius: 14,
+                padding: 16,
+              }}>
+
+                <p style={{
+                  margin: '0 0 6px',
+                  color: C.textMid,
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                }}>
+                  This Week
+                </p>
+
+                <h3 style={{
+                  margin: 0,
+                  color: C.text,
+                  fontSize: 24,
+                  fontWeight: 700,
+                }}>
+                  {weeklyCompletions}
+                </h3>
+
+                <p style={{
+                  margin: '6px 0 0',
+                  color: C.textMid,
+                  fontSize: 12,
+                }}>
+                  total completions
+                </p>
+
+              </div>
+
+              <div style={{
+                background: C.surfaceAlt,
+                border: `1px solid ${C.border}`,
+                borderRadius: 14,
+                padding: 16,
+              }}>
+
+                <p style={{
+                  margin: '0 0 6px',
+                  color: C.textMid,
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                }}>
+                  Active Days
+                </p>
+
+                <h3 style={{
+                  margin: 0,
+                  color: C.text,
+                  fontSize: 24,
+                  fontWeight: 700,
+                }}>
+                  {activeDaysThisWeek}
+                </h3>
+
+                <p style={{
+                  margin: '6px 0 0',
+                  color: C.textMid,
+                  fontSize: 12,
+                }}>
+                  days tracked this week
+                </p>
+
+              </div>
+
+            </div>
+
+            {/* Heatmap */}
+
+            <div style={{
+              display: 'grid',
+              gridTemplateRows: 'repeat(7, 1fr)',
+              gridAutoFlow: 'column',
+              gap: 4,
+              overflowX: 'auto',
+            }}>
+
+              {calendarData.map((item, index) => {
+
+                let bg = C.surfaceAlt
+
+                if (item.count >= 1) bg = C.accentDim
+                if (item.count >= 3) bg = C.accent
+                if (item.count >= 5) bg = '#7dd3fc'
+
+                return (
+
+                  <div
+                    key={index}
+                    title={`${item.count} completions`}
+                    style={{
+                      width: 13,
+                      height: 13,
+                      borderRadius: 3,
+                      background: bg,
+                      transition: '0.15s ease',
+                      cursor: 'pointer',
+                    }}
+                  />
+
+                )
+
+              })}
+
+            </div>
+
+            {/* Legend */}
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: 8,
+              marginTop: 18,
+            }}>
+
+              <span style={{
+                color: C.textMid,
+                fontSize: 11,
+              }}>
+                Less
+              </span>
+
+              {[0, 1, 2, 3].map((level) => {
+
+                let bg = C.surfaceAlt
+
+                if (level === 1) bg = C.accentDim
+                if (level === 2) bg = C.accent
+                if (level === 3) bg = '#7dd3fc'
+
+                return (
+
+                  <div
+                    key={level}
+                    style={{
+                      width: 11,
+                      height: 11,
+                      borderRadius: 3,
+                      background: bg,
+                    }}
+                  />
+
+                )
+
+              })}
+
+              <span style={{
+                color: C.textMid,
+                fontSize: 11,
+              }}>
+                More
+              </span>
+
+            </div>
+
+          </div>
+
         </div>
 
       )}
@@ -551,15 +1290,116 @@ export default function App() {
       {activeNav === 'settings' && (
 
         <div style={{
-          background: C.surface,
-          border: `1px solid ${C.border}`,
-          borderRadius: 14,
-          padding: 24,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 18,
+          maxWidth: 720,
         }}>
-          <h2 style={{ marginTop: 0 }}>Settings</h2>
-          <p style={{ color: C.textMid }}>
-            Theme and profile settings coming soon.
-          </p>
+
+          {/* Profile */}
+
+
+
+          {/* Appearance */}
+
+          <div style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 18,
+            padding: 20,
+          }}>
+
+            <p style={{
+              margin: '0 0 8px',
+              color: C.textMid,
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+            }}>
+              Appearance
+            </p>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+
+              <div>
+
+                <h3 style={{
+                  margin: '0 0 4px',
+                  color: C.text,
+                  fontSize: 16,
+                  fontWeight: 600,
+                }}>
+                  Theme
+                </h3>
+
+                <p style={{
+                  margin: 0,
+                  color: C.textMid,
+                  fontSize: 13,
+                }}>
+                  Customize interface appearance
+                </p>
+
+              </div>
+
+              <select
+                style={{
+                  background: C.surfaceAlt,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 10,
+                  padding: '8px 12px',
+                  color: C.text,
+                  fontSize: 12,
+                  outline: 'none',
+                }}
+              >
+
+                <option>Dark</option>
+                <option>Midnight</option>
+                <option>Graphite</option>
+
+              </select>
+
+            </div>
+
+          </div>
+
+          {/* Logout */}
+
+          <div style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 18,
+            padding: 20,
+          }}>
+
+            <button
+              onClick={() => {
+
+                localStorage.removeItem('token')
+
+                setIsLoggedIn(false)
+
+              }}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${C.border}`,
+                borderRadius: 12,
+                padding: '10px 16px',
+                color: '#f87171',
+                fontSize: 13,
+                cursor: 'pointer',
+              }}
+            >
+              Logout
+            </button>
+
+          </div>
+
         </div>
 
       )}
@@ -666,6 +1506,7 @@ export default function App() {
             cursor: 'pointer', fontSize: 9, fontWeight: activeNav === item.id ? 700 : 400,
           }}>
             <span style={{ fontSize: 20 }}>{item.sym}</span>
+
             <span>{item.label}</span>
           </button>
         ))}

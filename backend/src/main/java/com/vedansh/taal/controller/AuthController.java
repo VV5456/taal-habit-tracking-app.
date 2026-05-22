@@ -4,6 +4,7 @@ import com.vedansh.taal.entity.User;
 import com.vedansh.taal.service.AuthService;
 import com.vedansh.taal.dto.LoginRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -33,6 +34,12 @@ public class AuthController {
     public String protectedRoute(){
         return "This is a protected route";
     }
+
+    @GetMapping("/validate")
+    public ResponseEntity<?> validateToken(){
+        return ResponseEntity.ok("Token Valid");
+    }
+
 
 }
 
