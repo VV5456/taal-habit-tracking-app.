@@ -3,36 +3,36 @@ import { useEffect, useState, useCallback } from 'react'
 // ─── Theme ───────────────────────────────────────────────────────────────────
 // Pastel blue-orange palette, easy on the eyes
 const C = {
-  bg:        '#0c0d10',
-  surface:   '#13151a',
-  surfaceAlt:'#1a1c23',
-  border:    '#22252e',
+  bg: '#0c0d10',
+  surface: '#13151a',
+  surfaceAlt: '#1a1c23',
+  border: '#22252e',
   borderHov: '#2e3240',
 
-  accent:    '#c4a882',   // pastel warm orange/sand — primary accent
+  accent: '#c4a882',   // pastel warm orange/sand — primary accent
   accentDim: '#8c6f52',   // darker accent for borders
-  accentBg:  '#1e1912',   // very dark tinted background
+  accentBg: '#1e1912',   // very dark tinted background
 
-  blue:      '#8ab4d4',   // pastel blue — secondary
-  blueDim:   '#4a7a9b',
-  blueBg:    '#10161e',
+  blue: '#8ab4d4',   // pastel blue — secondary
+  blueDim: '#4a7a9b',
+  blueBg: '#10161e',
 
-  text:      '#d4cfc8',   // warm off-white
-  textMid:   '#7a7670',
-  textDim:   '#454340',
+  text: '#d4cfc8',   // warm off-white
+  textMid: '#7a7670',
+  textDim: '#454340',
 
-  danger:    '#c47a7a',
-  dangerBg:  '#1e1212',
+  danger: '#c47a7a',
+  dangerBg: '#1e1212',
 }
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', sym: '⊞' },
-  { id: 'habits',    label: 'Habits',    sym: '◎' },
-  { id: 'calendar',  label: 'Calendar',  sym: '▦' },
-  { id: 'settings',  label: 'Settings',  sym: '⚙' },
+  { id: 'habits', label: 'Habits', sym: '◎' },
+  { id: 'calendar', label: 'Calendar', sym: '▦' },
+  { id: 'settings', label: 'Settings', sym: '⚙' },
 ]
 
-const ICONS = ['📚','💪','🏃','💧','🧘','🎸','🛌','🧠','📖','🚀','🎯','🔥']
+const ICONS = ['📚', '💪', '🏃', '💧', '🧘', '🎸', '🛌', '🧠', '📖', '🚀', '🎯', '🔥']
 
 // ─── Responsive hook ─────────────────────────────────────────────────────────
 function useIsMobile() {
@@ -76,19 +76,20 @@ const inputStyle = {
 export default function App() {
   const isMobile = useIsMobile()
 
-  const [email, setEmail]                   = useState('')
-  const [password, setPassword]             = useState('')
-  const [habits, setHabits]                 = useState([])
-  const [newHabit, setNewHabit]             = useState('')
-  const [habitToDelete, setHabitToDelete]   = useState(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isSignup, setIsSignup] = useState(false)
+  const [habits, setHabits] = useState([])
+  const [newHabit, setNewHabit] = useState('')
+  const [habitToDelete, setHabitToDelete] = useState(null)
   const [editingHabitId, setEditingHabitId] = useState(null)
   const [editedHabitName, setEditedHabitName] = useState('')
   const [openMenuHabitId, setOpenMenuHabitId] = useState(null)
   const [showAddHabitModal, setShowAddHabitModal] = useState(false)
-  const [selectedIcon, setSelectedIcon]     = useState('📚')
-  const [activeNav, setActiveNav]           = useState('dashboard')
-  const [sidebarOpen, setSidebarOpen]       = useState(true)
-  const [isLoggedIn, setIsLoggedIn]         = useState(!!localStorage.getItem('token'))
+  const [selectedIcon, setSelectedIcon] = useState('📚')
+  const [activeNav, setActiveNav] = useState('dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'))
 
   // ── API calls ───────────────────────────────────────────────────────────────
   const fetchHabits = useCallback(async () => {
@@ -102,17 +103,97 @@ export default function App() {
   }, [])
 
   const handleLogin = async () => {
+
     try {
-      const res = await fetch('http://localhost:8080/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
-      localStorage.setItem('token', await res.text())
+
+      const res = await fetch(
+        'http://localhost:8080/api/auth/login',
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type': 'application/json',
+          },
+
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        }
+      )
+
+      if (!res.ok) {
+
+        alert('Invalid email or password')
+
+        return
+      }
+
+      const token = await res.text()
+
+      if (!token || token.trim() === '') {
+
+        alert('Login failed')
+
+        return
+      }
+
+      localStorage.setItem('token', token)
+
       setIsLoggedIn(true)
+
       fetchHabits()
-    } catch (e) { console.error(e) }
+
+    } catch (e) {
+
+      console.error(e)
+
+      alert('Server error')
+
+    }
   }
+
+  const handleRegister = async () => {
+
+    try {
+
+      const res = await fetch(
+        'http://localhost:8080/api/auth/register',
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type': 'application/json',
+          },
+
+          body: JSON.stringify({
+            name: email.split('@')[0],
+            email,
+            password,
+          }),
+        }
+      )
+
+      if (!res.ok) {
+
+        alert('Registration failed')
+
+        return
+      }
+
+      alert('Account created successfully')
+
+      setIsSignup(false)
+
+    } catch (e) {
+
+      console.error(e)
+
+      alert('Server error')
+
+    }
+  }
+
 
   const addHabit = async () => {
     try {
@@ -211,13 +292,38 @@ export default function App() {
           <input type="password" value={password} onChange={e => setPassword(e.target.value)}
             placeholder="••••••••" style={{ ...inputStyle, marginBottom: 26 }} />
 
-          <button onClick={handleLogin} style={{
-            width: '100%', padding: '13px',
-            background: C.accentBg, border: `1px solid ${C.accentDim}`,
-            borderRadius: 11, color: C.accent,
-            fontWeight: 700, fontSize: 14, cursor: 'pointer', letterSpacing: 0.5,
-          }}>
-            Sign In →
+          <button
+            onClick={isSignup ? handleRegister : handleLogin}
+            style={{
+              width: '100%',
+              padding: '13px',
+              background: C.accentBg,
+              border: `1px solid ${C.accentDim}`,
+              borderRadius: 11,
+              color: C.accent,
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: 'pointer',
+              letterSpacing: 0.5,
+            }}
+          >
+            {isSignup ? 'Create Account →' : 'Sign In →'}
+          </button>
+          <button
+            onClick={() => setIsSignup(!isSignup)}
+            style={{
+              marginTop: 14,
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              color: C.textMid,
+              cursor: 'pointer',
+              fontSize: 12,
+            }}
+          >
+            {isSignup
+              ? 'Already have an account? Sign In'
+              : 'Create a new account'}
           </button>
         </div>
       </div>
@@ -387,10 +493,10 @@ export default function App() {
         gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
         gap: 10, marginBottom: 24,
       }}>
-        <StatCard label="Total Habits"   value={habits.length}            sub={`${completedToday} done today`}      tint={C.accentDim} />
-        <StatCard label="Done Today"     value={`${completedToday}/${habits.length}`} sub={`${pct}% completion`}   tint={C.blueDim} />
-        <StatCard label="Streak Points"  value={totalStreak}              sub="consecutive days"                     tint={C.accentDim} />
-        <StatCard label="Active Since"   value="175d"                     sub="tracking window"                      tint={C.blueDim} />
+        <StatCard label="Total Habits" value={habits.length} sub={`${completedToday} done today`} tint={C.accentDim} />
+        <StatCard label="Done Today" value={`${completedToday}/${habits.length}`} sub={`${pct}% completion`} tint={C.blueDim} />
+        <StatCard label="Streak Points" value={totalStreak} sub="consecutive days" tint={C.accentDim} />
+        <StatCard label="Active Since" value="175d" sub="tracking window" tint={C.blueDim} />
       </div>
 
       {/* Section header */}
@@ -402,18 +508,61 @@ export default function App() {
       </div>
 
       {/* Cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {habits.map(h => <HabitCard key={h.id} habit={h} />)}
-        {habits.length === 0 && (
-          <div style={{
-            textAlign: 'center', padding: '56px 24px',
-            border: `1px dashed ${C.border}`, borderRadius: 14, color: C.textDim,
-          }}>
-            <div style={{ fontSize: 36, marginBottom: 10 }}>🎯</div>
-            <p style={{ margin: 0, fontSize: 14 }}>No habits yet. Add your first one!</p>
-          </div>
-        )}
-      </div>
+      {activeNav === 'dashboard' && (
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {habits.map(h => <HabitCard key={h.id} habit={h} />)}
+        </div>
+
+      )}
+
+      {activeNav === 'habits' && (
+
+        <div style={{
+          background: C.surface,
+          border: `1px solid ${C.border}`,
+          borderRadius: 14,
+          padding: 24,
+        }}>
+          <h2 style={{ marginTop: 0 }}>All Habits</h2>
+          <p style={{ color: C.textMid }}>
+            Habit management view coming soon.
+          </p>
+        </div>
+
+      )}
+
+      {activeNav === 'calendar' && (
+
+        <div style={{
+          background: C.surface,
+          border: `1px solid ${C.border}`,
+          borderRadius: 14,
+          padding: 24,
+        }}>
+          <h2 style={{ marginTop: 0 }}>Calendar</h2>
+          <p style={{ color: C.textMid }}>
+            Calendar analytics view coming soon.
+          </p>
+        </div>
+
+      )}
+
+      {activeNav === 'settings' && (
+
+        <div style={{
+          background: C.surface,
+          border: `1px solid ${C.border}`,
+          borderRadius: 14,
+          padding: 24,
+        }}>
+          <h2 style={{ marginTop: 0 }}>Settings</h2>
+          <p style={{ color: C.textMid }}>
+            Theme and profile settings coming soon.
+          </p>
+        </div>
+
+      )}
 
       {/* Spacer for mobile bottom nav */}
       {isMobile && <div style={{ height: 72 }} />}

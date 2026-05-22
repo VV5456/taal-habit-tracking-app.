@@ -20,10 +20,11 @@ public class AuthService {
     private JwtUtil jwtUtil;
     @Autowired
     private PasswordEncoder passwordEncoder;
+
     public String registerUser(User user){
 
         if(userRepository.findByEmail(user.getEmail()).isPresent()){
-            return "Email already exits";
+            throw new RuntimeException("Already exists");
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         userRepository.save(user);
@@ -35,7 +36,7 @@ public class AuthService {
         User user=userRepository.findByEmail(request.getEmail())
                 .orElse(null);
         if(user==null){
-            return "User not found.";
+            throw new RuntimeException("User not found.");
         }
 
         boolean passwordMatches=passwordEncoder.matches(
@@ -44,7 +45,7 @@ public class AuthService {
         );
 
         if(!passwordMatches){
-            return "Invalid password";
+            throw new RuntimeException("Invalid Password");
         }
 
         String token=jwtUtil.generateToken(user.getEmail());
