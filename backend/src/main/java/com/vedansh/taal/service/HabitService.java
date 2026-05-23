@@ -47,23 +47,12 @@ public class HabitService {
 
         LocalDate today = LocalDate.now();
 
-        boolean alreadyCompleted =
-                habitEntryRepository
-                        .findByHabitAndCompletedDate(habit, today)
-                        .isPresent();
+        HabitEntry existingEntry = habitEntryRepository
+                .findByHabitAndCompletedDate(habit, today)
+                .orElse(null);
 
-        if (alreadyCompleted) {
-
-            HabitEntry existingEntry =
-                    habitEntryRepository
-                            .findByHabitAndCompletedDate(
-                                    habit,
-                                    today
-                            )
-                            .orElseThrow();
-
+        if (existingEntry != null) {
             habitEntryRepository.delete(existingEntry);
-
             return "Habit uncompleted";
         }
 
@@ -149,6 +138,23 @@ public class HabitService {
         return habitRepository.save(existingHabit);
     }
 
+    private int calculateStreak(List<LocalDate> completedDates){
+        Set<LocalDate> completedSet=completedDates.stream().collect(Collectors.toSet());
+
+        LocalDate currentDate= LocalDate.now();
+
+        if(!completedSet.contains(currentDate)){
+            currentDate= currentDate.minusDays(1);
+        }
+
+        int streak=0;
+
+        while(completedSet.contains(currentDate)){
+            streak++;
+            currentDate= currentDate.minusDays(1);
+        }
+        return streak;
+    }
 
     public List<HabitResponse> getUserHabits(){
         User currentUser=authService.getCurrentUser();
@@ -162,7 +168,7 @@ public class HabitService {
                     .stream()
                     .map(HabitEntry::getCompletedDate)
                     .toList();
-            return new HabitResponse(habit.getId(), habit.getName(),habit.getIcon(), completedToday, getHabitStreak(habit.getId()),completedDates);
+            return new HabitResponse(habit.getId(), habit.getName(),habit.getIcon(), completedToday, calculateStreak(completedDates),completedDates);
         }).toList();
     }
 }

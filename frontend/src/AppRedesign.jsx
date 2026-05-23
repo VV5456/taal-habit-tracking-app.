@@ -258,13 +258,36 @@ export default function App() {
   }
 
   const completeHabit = async (id) => {
+
+    const oldHabits = habits
+
+    setHabits(prev =>
+      prev.map(h =>
+        h.id === id
+          ? {
+            ...h,
+            completedToday: !h.completedToday
+          }
+          : h
+      )
+    )
+
     try {
       const token = localStorage.getItem('token')
+
       await fetch(`http://localhost:8080/api/habits/${id}/complete`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
       })
-      fetchHabits()
-    } catch (e) { console.error(e) }
+
+    } catch (e) {
+
+      setHabits(oldHabits)
+
+      console.error(e)
+    }
   }
 
   const deleteHabit = async (id) => {
