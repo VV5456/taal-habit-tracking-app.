@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 
+const API = import.meta.env.VITE_API_URL
+
 // ─── Theme ───────────────────────────────────────────────────────────────────
 // Pastel blue-orange palette, easy on the eyes
 const C = {
@@ -95,13 +97,31 @@ export default function App() {
 
   // ── API calls ───────────────────────────────────────────────────────────────
   const fetchHabits = useCallback(async () => {
+
     try {
+
       const token = localStorage.getItem('token')
-      const res = await fetch('http://localhost:8080/api/habits', {
-        headers: { Authorization: `Bearer ${token}` },
+
+      const res = await fetch(`${API}/api/habits`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
       })
-      setHabits(await res.json())
-    } catch (e) { console.error(e) }
+
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}`)
+      }
+
+      const data = await res.json()
+
+      setHabits(data)
+
+    } catch (e) {
+
+      console.error(e)
+
+    }
+
   }, [])
 
   const validateToken = async () => {
@@ -118,7 +138,7 @@ export default function App() {
     try {
 
       const res = await fetch(
-        'http://localhost:8080/api/auth/validate',
+        `${API}/api/auth/validate`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -156,7 +176,7 @@ export default function App() {
     try {
 
       const res = await fetch(
-        'http://localhost:8080/api/auth/login',
+        `${API}/api/auth/login`,
         {
           method: 'POST',
 
@@ -207,7 +227,7 @@ export default function App() {
     try {
 
       const res = await fetch(
-        'http://localhost:8080/api/auth/register',
+        `${API}/api/auth/register`,
         {
           method: 'POST',
 
@@ -247,7 +267,7 @@ export default function App() {
   const addHabit = async () => {
     try {
       const token = localStorage.getItem('token')
-      await fetch('http://localhost:8080/api/habits', {
+      await fetch(`${API}/api/habits`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: newHabit, icon: selectedIcon }),
@@ -275,7 +295,7 @@ export default function App() {
     try {
       const token = localStorage.getItem('token')
 
-      await fetch(`http://localhost:8080/api/habits/${id}/complete`, {
+      await fetch(`${API}/api/habits/${id}/complete`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`
@@ -293,7 +313,7 @@ export default function App() {
   const deleteHabit = async (id) => {
     try {
       const token = localStorage.getItem('token')
-      await fetch(`http://localhost:8080/api/habits/${id}`, {
+      await fetch(`${API}/api/habits/${id}`, {
         method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       })
       fetchHabits()
@@ -303,7 +323,7 @@ export default function App() {
   const updateHabit = async (id) => {
     try {
       const token = localStorage.getItem('token')
-      await fetch(`http://localhost:8080/api/habits/${id}`, {
+      await fetch(`${API}/api/habits/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: editedHabitName }),
