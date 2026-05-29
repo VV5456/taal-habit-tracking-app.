@@ -279,21 +279,48 @@ export default function App() {
 
   const completeHabit = async (id) => {
 
+    const today = new Date().toISOString().split('T')[0]
+
+    const oldHabits = [...habits]
+
+    setHabits(prev =>
+      prev.map(h => {
+
+        if (h.id !== id) return h
+
+        const alreadyDone =
+          h.completedDates?.includes(today)
+
+        return {
+          ...h,
+          completedToday: !h.completedToday,
+          completedDates: alreadyDone
+            ? h.completedDates.filter(d => d !== today)
+            : [...(h.completedDates || []), today]
+        }
+      })
+    )
+
     try {
 
       const token = localStorage.getItem('token')
 
-      await fetch(`${API}/api/habits/${id}/complete`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-      })
-
-      await fetchHabits()
+      await fetch(
+        `${API}/api/habits/${id}/complete`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
 
     } catch (e) {
+
+      setHabits(oldHabits)
+
       console.error(e)
+
     }
   }
 
