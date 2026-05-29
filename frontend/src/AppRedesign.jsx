@@ -279,20 +279,8 @@ export default function App() {
 
   const completeHabit = async (id) => {
 
-    const oldHabits = habits
-
-    setHabits(prev =>
-      prev.map(h =>
-        h.id === id
-          ? {
-            ...h,
-            completedToday: !h.completedToday
-          }
-          : h
-      )
-    )
-
     try {
+
       const token = localStorage.getItem('token')
 
       await fetch(`${API}/api/habits/${id}/complete`, {
@@ -302,10 +290,9 @@ export default function App() {
         },
       })
 
+      await fetchHabits()
+
     } catch (e) {
-
-      setHabits(oldHabits)
-
       console.error(e)
     }
   }
